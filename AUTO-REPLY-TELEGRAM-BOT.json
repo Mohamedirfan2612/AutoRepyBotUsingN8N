@@ -1,0 +1,400 @@
+{
+  "name": "AUTO-REPLY-TELEGRAM-BOT",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {
+          "download": true
+        }
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -672,
+        16
+      ],
+      "id": "45c683ea-8efb-4462-a45f-1a62aa05e0a0",
+      "name": "SCCAUTOREPLY",
+      "webhookId": "0c8345f3-4106-4672-ae23-68982597f7ea",
+      "credentials": {
+        "telegramApi": {
+          "id": "YjJf2czaSdJVkaHN",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.message.text }}",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "id": "f319bbb4-eb16-496a-b824-e0be8eb217f3"
+            },
+            {
+              "leftValue": "={{ $json.message.text.length }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "id": "19362811-ab9d-4948-99c2-83e6f67d7210"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -496,
+        16
+      ],
+      "id": "064bf703-6ed1-4195-a0f4-5281449331d3",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract message details\nconst message = $input.first().json.message;\nconst userMessage = message.text || \"\";\nconst userId = message.from.id;\nconst userName = message.from.first_name || \"Student\";\nconst chatId = message.chat.id;\n\n// SSC keyword detection\nconst sscKeywords = [\n  'ssc', 'cgl', 'chsl', 'mts', 'je', 'cpo', 'stenographer',\n  'gk', 'general knowledge', 'current affairs', 'history', 'geography', 'polity', 'economics', 'science',\n  'reasoning', 'logical', 'verbal', 'non-verbal', 'analogy', 'series', 'coding', 'blood relation',\n  'maths', 'mathematics', 'quantitative', 'aptitude', 'arithmetic', 'algebra', 'geometry', 'percentage', 'profit', 'loss', 'interest', 'time', 'work', 'speed', 'distance',\n  'english', 'grammar', 'vocabulary', 'comprehension', 'synonyms', 'antonyms', 'sentence', 'correction', 'error', 'detection'\n];\n\nconst isSSCRelated = sscKeywords.some(keyword => userMessage.toLowerCase().includes(keyword)) || userMessage.length > 10;\n\nconst systemPrompt = `You are an expert SSC exam tutor. Answer clearly and step-by-step.\nStudent's Question: ${userMessage}`;\n\nreturn [{ json: { originalMessage: userMessage, userId, userName, chatId, isSSCRelated, systemPrompt } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        16
+      ],
+      "id": "a2fd186e-7f3f-4b76-98f5-60e2aeeb74b2",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.isSSCRelated }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "id": "81457876-b22c-47c1-85ed-9e25ba6b5ee6"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -192,
+        16
+      ],
+      "id": "0d78961a-e704-469f-b00b-272d5a826900",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.0-flash-lite-001",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.0-flash-lite-001"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.systemPrompt }}"
+            }
+          ]
+        },
+        "options": {
+          "maxOutputTokens": 1000,
+          "temperature": 0.7,
+          "topP": 1,
+          "topK": 40
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3216399e-0978-4b28-b0e3-a9b2aef81dab",
+      "name": "Gemini API for SSC Bot",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "oadMPf9c77WUgSIW",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Non-SSC default response\nconst userName = $json.userName || \"Student\";\nconst chatId = $json.chatId;\nreturn [{ json: { response: `Hi ${userName}! 👋 I can only answer SSC-related questions. Please ask me about GK, reasoning, maths, or English topics from SSC exams.`, chatId } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        256
+      ],
+      "id": "be62973a-1a0d-46eb-9cf4-cb90fbba1f35",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "jsCode": "function cleanTextForUser(text) {\n  return text\n    .replace(/\\*\\*(.*?)\\*\\*/g, '$1') // Remove **bold**\n    .replace(/\\\\/g, '')              // Remove all backslashes\n    .replace(/ +/g, ' ')             // Remove extra spaces\n    .replace(/\\n{3,}/g, '\\n\\n')      // Reduce blank lines\n    .trim();\n}\n\nfunction escapeMarkdownV2(text) {\n  return text\n    .replace(/_/g, '\\\\_')\n    .replace(/\\*/g, '\\\\*')\n    .replace(/\\[/g, '\\\\[')\n    .replace(/\\]/g, '\\\\]')\n    .replace(/\\(/g, '\\\\(')\n    .replace(/\\)/g, '\\\\)')\n    .replace(/~/g, '\\\\~')\n    .replace(/`/g, '\\\\`')\n    .replace(/>/g, '\\\\>')\n    .replace(/#/g, '\\\\#')\n    .replace(/\\+/g, '\\\\+')\n    .replace(/-/g, '\\\\-')\n    .replace(/=/g, '\\\\=')\n    .replace(/\\|/g, '\\\\|')\n    .replace(/{/g, '\\\\{')\n    .replace(/}/g, '\\\\}')\n    .replace(/\\./g, '\\\\.')\n    .replace(/!/g, '\\\\!');\n}\n\nfunction splitMessage(text, limit = 4000) {\n  const chunks = [];\n  let start = 0;\n  while (start < text.length) {\n    chunks.push(text.substring(start, start + limit));\n    start += limit;\n  }\n  return chunks;\n}\n\nconst chatId = $item(0).$node[\"Code\"].json.chatId;\n\n// Get AI text\nlet aiResponse = \"\";\nif (\n  $input.all()[0].json.content?.parts?.[0]?.text &&\n  $input.all()[0].json.content.parts[0].text.trim()\n) {\n  aiResponse = $input.all()[0].json.content.parts[0].text;\n} else {\n  aiResponse = \"I'm sorry, I couldn't process your question right now. Please try again!\";\n}\n\n// Stage 1: Clean text for user readability\naiResponse = cleanTextForUser(aiResponse);\n\n// Stage 2: Escape only the needed characters for Telegram\naiResponse = escapeMarkdownV2(aiResponse);\n\n// Stage 3: Split if too long\nconst messages = splitMessage(aiResponse);\n\nreturn messages.map(msg => ({ json: { response: msg, chatId } }));\n\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        0
+      ],
+      "id": "8cc212d6-919c-4d1b-b27f-1799b66747bf",
+      "name": "Code2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        512,
+        16
+      ],
+      "id": "7fbee193-7d81-4b57-877f-4524d8c1e987",
+      "name": "Merge"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        208,
+        208
+      ],
+      "id": "cb53c17d-f96c-490e-ade6-3a018f471584",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.response }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        928,
+        16
+      ],
+      "id": "4d7f9075-9968-4465-a9ee-38a64c1efea5",
+      "name": "Send a text message",
+      "webhookId": "bccc7e6d-5d85-4562-b825-967c2d06e407",
+      "credentials": {
+        "telegramApi": {
+          "id": "YjJf2czaSdJVkaHN",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.response }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        224
+      ],
+      "id": "a3f29635-1fed-4c0f-9129-a2d716d49aff",
+      "name": "Send a text message1",
+      "webhookId": "74627455-3300-410d-a155-f0a8f8b1d441",
+      "credentials": {
+        "telegramApi": {
+          "id": "YjJf2czaSdJVkaHN",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "SCCAUTOREPLY": [
+      {
+        "json": {
+          "update_id": 977742791,
+          "message": {
+            "message_id": 30,
+            "from": {
+              "id": 1023900142,
+              "is_bot": false,
+              "first_name": "Mohamed",
+              "last_name": "irfan",
+              "username": "mohamed_irfan_r",
+              "language_code": "en"
+            },
+            "chat": {
+              "id": 1023900142,
+              "first_name": "Mohamed",
+              "last_name": "irfan",
+              "username": "mohamed_irfan_r",
+              "type": "private"
+            },
+            "date": 1754738380,
+            "text": "What book I need to read tell me subject vise"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "SCCAUTOREPLY": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Gemini API for SSC Bot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini API for SSC Bot": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "35d98869-c4e3-4529-9642-a34309009d7f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "78d3fed70af576ea8b704043aab7660bbf825142a60367bd936b4d5064de8429"
+  },
+  "id": "Pc7cPJCB5HVb6C7x",
+  "tags": []
+}
